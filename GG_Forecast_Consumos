@@ -1,0 +1,32 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.tsa.arima.model import ARIMA
+
+# Load the data
+sheet_name = "00GG_CONTROL_CONSUMOS"
+consumos_control_data = pd.read_excel(r"C:\Users\rcaceres\OneDrive - Hinojosa Packaging Group\Consumos.xlsx", sheet_name=sheet_name)
+
+# Group by month and sum up only the "KG Consumidos" column
+monthly_consumption = consumos_control_data.groupby(consumos_control_data["Fecha"].dt.to_period("M"))["KG Consumidos"].sum()
+
+# Fit the ARIMA model
+model_arima = ARIMA(monthly_consumption, order=(5,1,0))
+model_fit = model_arima.fit()
+
+# Forecast for the next 14 months to cover until December 2024
+extended_forecast = model_fit.forecast(steps=14)
+
+# Plot the original data and the extended forecast
+plt.figure(figsize=(15, 7))
+monthly_consumption.plot(label="Real Data")
+extended_forecast.plot(label="Extended Forecast", linestyle="--", color="red")
+plt.legend()
+plt.title("Consumo Mensual de KG y Predicción Extendida para 2024")
+plt.xlabel("Fecha")
+plt.ylabel("KG Consumidos")
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Print the forecasted values for the next 14 months
+print(extended_forecast)
