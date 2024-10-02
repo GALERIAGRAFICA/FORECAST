@@ -53,7 +53,7 @@ if uploaded_file is not None:
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Graficar los datos reales hasta el último punto
-    ax.plot(df_prophet_subfamilia['ds'], df_prophet_subfamilia['y'], label='Datos Reales', color='blue')
+    ax.plot(df_prophet_subfamilia   ['ds'], df_prophet_subfamilia['y'], label='Datos Reales', color='blue')
 
     # Graficar las predicciones desde el último punto en rojo
     ax.plot(forecast_prophet_subfamilia['ds'], forecast_prophet_subfamilia['yhat'], label='Predicción', color='red')
