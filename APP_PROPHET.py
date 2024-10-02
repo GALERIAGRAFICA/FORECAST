@@ -2,6 +2,14 @@ import streamlit as st
 import pandas as pd
 from prophet import Prophet
 import matplotlib.pyplot as plt
+from PIL import Image
+
+# LOGO GG
+# Cargar el logo
+logo = Image.open(r"C:\Users\rcaceres\Desktop\GGrafica-Coding\GGrafica\Python\FORECAST\Logo.png")
+
+# Mostrar el logo en la app
+st.image(logo, width=150, use_column_width=True)
 
 # Título de la app
 st.title('Predicción de Consumo de Papel')
@@ -25,51 +33,51 @@ if uploaded_file is not None:
         'KG Consumidos': 'sum'
     }).reset_index()
 
-    # Seleccionar subfamilia
+    # Primer nivel de filtrado: Seleccionar subfamilia
     subfamilias = grouped_consumption['Papeles.SubFamilia'].unique()
     subfamilia_seleccionada = st.selectbox("Selecciona la subfamilia", subfamilias)
 
     # Filtrar por la subfamilia seleccionada
     subfamilia_filtered = grouped_consumption[grouped_consumption['Papeles.SubFamilia'] == subfamilia_seleccionada]
 
-    # Seleccionar el tipo de análisis
-    tipo_analisis = st.selectbox("Selecciona el tipo de análisis", ["Gramaje", "Marca", "Certificado"])
+    # Segundo nivel de filtrado: Seleccionar si se quiere filtrar por gramaje
+    gramajes_unicos = subfamilia_filtered['Papeles.Gramaje'].unique()
+    gramaje_seleccionado = st.selectbox("Selecciona el gramaje (opcional)", ['Ninguno'] + list(gramajes_unicos))
 
-    if tipo_analisis == "Gramaje":
-        # Obtener los gramajes únicos
-        gramajes_unicos = subfamilia_filtered['Papeles.Gramaje'].unique()
-        gramaje_seleccionado = st.selectbox("Selecciona el gramaje", gramajes_unicos)
-
-        # Filtrar por el gramaje seleccionado
+    if gramaje_seleccionado != 'Ninguno':
+        # Filtrar por gramaje seleccionado
         gramaje_filtered = subfamilia_filtered[subfamilia_filtered['Papeles.Gramaje'] == gramaje_seleccionado]
-        gramaje_filtered = gramaje_filtered.resample('W', on='Fecha').sum().reset_index()
+    else:
+        gramaje_filtered = subfamilia_filtered
 
-        # Preparar los datos para Prophet
-        df_prophet = gramaje_filtered[['Fecha', 'KG Consumidos']].rename(columns={'Fecha': 'ds', 'KG Consumidos': 'y'})
+    # Tercer nivel de filtrado: Seleccionar si se quiere filtrar por marca o certificado
+    tipo_analisis = st.selectbox("Selecciona análisis adicional (opcional)", ["Ninguno", "Marca", "Certificado"])
 
-    elif tipo_analisis == "Marca":
-        # Obtener las marcas únicas
-        marcas_unicas = subfamilia_filtered['MARCA'].unique()
+    if tipo_analisis == "Marca":
+        # Filtrar por marca
+        marcas_unicas = gramaje_filtered['MARCA'].unique()
         marca_seleccionada = st.selectbox("Selecciona la marca", marcas_unicas)
 
         # Filtrar por la marca seleccionada
-        marca_filtered = subfamilia_filtered[subfamilia_filtered['MARCA'] == marca_seleccionada]
-        marca_filtered = marca_filtered.resample('W', on='Fecha').sum().reset_index()
-
-        # Preparar los datos para Prophet
-        df_prophet = marca_filtered[['Fecha', 'KG Consumidos']].rename(columns={'Fecha': 'ds', 'KG Consumidos': 'y'})
+        analisis_filtered = gramaje_filtered[gramaje_filtered['MARCA'] == marca_seleccionada]
 
     elif tipo_analisis == "Certificado":
-        # Obtener los certificados únicos
-        certificados_unicos = subfamilia_filtered['CERTIFICADO'].unique()
+        # Filtrar por certificado
+        certificados_unicos = gramaje_filtered['CERTIFICADO'].unique()
         certificado_seleccionado = st.selectbox("Selecciona el certificado", certificados_unicos)
 
         # Filtrar por el certificado seleccionado
-        certificado_filtered = subfamilia_filtered[subfamilia_filtered['CERTIFICADO'] == certificado_seleccionado]
-        certificado_filtered = certificado_filtered.resample('W', on='Fecha').sum().reset_index()
+        analisis_filtered = gramaje_filtered[gramaje_filtered['CERTIFICADO'] == certificado_seleccionado]
 
-        # Preparar los datos para Prophet
-        df_prophet = certificado_filtered[['Fecha', 'KG Consumidos']].rename(columns={'Fecha': 'ds', 'KG Consumidos': 'y'})
+    else:
+        # Si no se selecciona análisis adicional, usamos el filtrado hasta el nivel anterior
+        analisis_filtered = gramaje_filtered
+
+    # Agrupar los datos por semana y fecha
+    analisis_filtered = analisis_filtered.resample('W', on='Fecha').sum().reset_index()
+
+    # Preparar los datos para Prophet
+    df_prophet = analisis_filtered[['Fecha', 'KG Consumidos']].rename(columns={'Fecha': 'ds', 'KG Consumidos': 'y'})
 
     # Verificar si hay suficientes datos para Prophet
     if len(df_prophet) >= 2:
@@ -96,12 +104,13 @@ if uploaded_file is not None:
         ax.fill_between(forecast['ds'], forecast['yhat_lower'], forecast['yhat_upper'], color='pink', alpha=0.3)
 
         # Mostrar el gráfico en la app de Streamlit
-        if tipo_analisis == "Gramaje":
-            plt.title(f'Predicción de Consumo (KG) - Gramaje: {gramaje_seleccionado}')
-        elif tipo_analisis == "Marca":
-            plt.title(f'Predicción de Consumo (KG) - Marca: {marca_seleccionada}')
+        plt.title(f'Predicción de Consumo (KG) - Subfamilia: {subfamilia_seleccionada}')
+        if gramaje_seleccionado != 'Ninguno':
+            plt.title(f'Predicción de Consumo (KG) - Subfamilia: {subfamilia_seleccionada}, Gramaje: {gramaje_seleccionado}')
+        if tipo_analisis == "Marca":
+            plt.title(f'Predicción de Consumo (KG) - Subfamilia: {subfamilia_seleccionada}, Marca: {marca_seleccionada}')
         elif tipo_analisis == "Certificado":
-            plt.title(f'Predicción de Consumo (KG) - Certificado: {certificado_seleccionado}')
+            plt.title(f'Predicción de Consumo (KG) - Subfamilia: {subfamilia_seleccionada}, Certificado: {certificado_seleccionado}')
 
         plt.xlabel('Fecha')
         plt.ylabel('KG Consumidos')
@@ -110,4 +119,4 @@ if uploaded_file is not None:
         plt.tight_layout()
         st.pyplot(fig)
     else:
-        st.write(f"No hay suficientes datos para realizar la predicción de {tipo_analisis} seleccionado.")
+        st.write(f"No hay suficientes datos para realizar la predicción para la subfamilia {subfamilia_seleccionada}.")
