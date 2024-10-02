@@ -6,7 +6,7 @@ from PIL import Image
 
 # LOGO GG
 # Cargar el logo
-logo = Image.open(r"C:\Users\rcaceres\Desktop\GGrafica-Coding\GGrafica\Python\FORECAST\Logo.png")
+logo = Image.open("Logo.png")
 
 # Mostrar el logo en la app
 st.image(logo, width=150, use_column_width=True)
